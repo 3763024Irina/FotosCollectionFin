@@ -7,22 +7,20 @@ class PhotoGalleryViewController: UIViewController {
     private let searchBar = UISearchBar()
     private var collectionView: UICollectionView!
     private let resetButton = UIButton(type: .system)
-    private var isFetchingData = false // Флаг для предотвращения дублирующихся запросов
-    private var currentPage = 1 // Текущая страница для подгрузки фото
+    private var isFetchingData = false
+    private var currentPage = 1
     
     override func viewDidLoad() {
         super.viewDidLoad()
         setupUI()
         fetchPhotos(query: "Дом", page: currentPage)
     }
-    
-    // Настройка интерфейса
     private func setupUI() {
         view.backgroundColor = .white
         
         searchBar.placeholder = "Search photos"
         searchBar.delegate = self
-        searchBar.sizeToFit() // Фикс для UINavigationBar
+        searchBar.sizeToFit() 
         navigationItem.titleView = searchBar
         
         let layout = UICollectionViewFlowLayout()
@@ -58,7 +56,7 @@ class PhotoGalleryViewController: UIViewController {
 
         isFetchingData = true
         
-        // Передаем запрос и текущую страницу
+       
         PixabayAPI.fetchPhotos(query: query, page: page) { [weak self] result in
             guard let self = self else { return }
 
@@ -69,9 +67,9 @@ class PhotoGalleryViewController: UIViewController {
             switch result {
             case .success(let fetchedPhotos):
                 DispatchQueue.main.async {
-                    self.photos.append(contentsOf: fetchedPhotos) // Добавляем новые фото
+                    self.photos.append(contentsOf: fetchedPhotos)
                     self.collectionView.reloadData()
-                    self.currentPage += 1 // Увеличиваем страницу для следующего запроса
+                    self.currentPage += 1
                 }
             case .failure(let error):
                 DispatchQueue.main.async {
@@ -81,8 +79,6 @@ class PhotoGalleryViewController: UIViewController {
             }
         }
     }
-
-    
     private func showAlert(title: String, message: String) {
         let alert = UIAlertController(title: title, message: message, preferredStyle: .alert)
         alert.addAction(UIAlertAction(title: "OK", style: .default))
@@ -95,12 +91,10 @@ class PhotoGalleryViewController: UIViewController {
     }
 
     @objc private func resetSearch() {
-        searchBar.text = ""  // Очищаем текстовое поле
-        photos.removeAll()   // Очищаем текущие фотографии
-        collectionView.reloadData() // Перезагружаем коллекцию
-        currentPage = 1  // Сбрасываем страницу
-        
-        // При пустом запросе загружаем все фотографии
+        searchBar.text = ""
+        photos.removeAll()
+        collectionView.reloadData()
+        currentPage = 1
         fetchPhotos(query: "", page: currentPage)
     }
 
@@ -135,16 +129,16 @@ extension PhotoGalleryViewController: UICollectionViewDelegate, UICollectionView
 extension PhotoGalleryViewController: UISearchBarDelegate {
     func searchBarSearchButtonClicked(_ searchBar: UISearchBar) {
         if let query = searchBar.text, !query.isEmpty {
-            photos.removeAll() // Очищаем текущие фотографии
-            collectionView.reloadData() // Перезагружаем коллекцию
-            currentPage = 1 // Сбрасываем страницу
-            fetchPhotos(query: query, page: currentPage) // Загружаем фотографии по запросу
-        } else {
-            // Если текст пустой, загружаем все фотографии
             photos.removeAll()
             collectionView.reloadData()
             currentPage = 1
-            fetchPhotos(query: "", page: currentPage) // Загружаем все фотографии
+            fetchPhotos(query: query, page: currentPage)  запросу
+        } else {
+            
+            photos.removeAll()
+            collectionView.reloadData()
+            currentPage = 1
+            fetchPhotos(query: "", page: currentPage)
         }
     }
 }
