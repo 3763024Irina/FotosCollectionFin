@@ -1,7 +1,7 @@
 import UIKit
 import SDWebImage
 
-// Ячейка коллекции для отображения фотографии
+
 class PhotoCell: UICollectionViewCell {
     private let imageView = UIImageView()
     

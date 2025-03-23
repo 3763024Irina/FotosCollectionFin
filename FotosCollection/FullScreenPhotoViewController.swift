@@ -3,9 +3,7 @@ import SDWebImage
 
 class FullScreenPhotoViewController: UIViewController {
     private let imageView = UIImageView()
-    var photoURL: String? // Сделано доступным для других классов
-    
-    // Инициализатор для передачи URL фотографии
+    var photoURL: String? 
     init(photoURL: String) {
         self.photoURL = photoURL
         super.init(nibName: nil, bundle: nil)
@@ -20,17 +18,17 @@ class FullScreenPhotoViewController: UIViewController {
         
         view.backgroundColor = .black
         
-        // Настройка imageView
+     
         imageView.translatesAutoresizingMaskIntoConstraints = false
         imageView.contentMode = .scaleAspectFit
         view.addSubview(imageView)
         
-        // Загрузка изображения с использованием SDWebImage
+      
         if let urlString = photoURL, let url = URL(string: urlString) {
             imageView.sd_setImage(with: url, placeholderImage: UIImage(named: "placeholder"))
         }
         
-        // Установка ограничений для imageView
+       
         NSLayoutConstraint.activate([
             imageView.centerXAnchor.constraint(equalTo: view.centerXAnchor),
             imageView.centerYAnchor.constraint(equalTo: view.centerYAnchor),

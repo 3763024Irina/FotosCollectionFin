@@ -3,15 +3,17 @@ import SDWebImage
 
 class PhotoGalleryViewController: UIViewController {
     
-    var photos: [Photo] = [] // Массив загруженных фото
-    private let searchBar = UISearchBar() // Поисковая строка
-    private var collectionView: UICollectionView! // Коллекция для отображения фото
-    private let resetButton = UIButton(type: .system) // Кнопка сброса
+    var photos: [Photo] = []
+    private let searchBar = UISearchBar()
+    private var collectionView: UICollectionView!
+    private let resetButton = UIButton(type: .system)
+    private var isFetchingData = false // Флаг для предотвращения дублирующихся запросов
+    private var currentPage = 1 // Текущая страница для подгрузки фото
     
     override func viewDidLoad() {
         super.viewDidLoad()
         setupUI()
-        fetchPhotos(query: "Дом") // Начальная загрузка
+        fetchPhotos(query: "Дом", page: currentPage)
     }
     
     // Настройка интерфейса
@@ -19,7 +21,8 @@ class PhotoGalleryViewController: UIViewController {
         view.backgroundColor = .white
         
         searchBar.placeholder = "Search photos"
-        searchBar.delegate = self // Назначаем делегат UISearchBar
+        searchBar.delegate = self
+        searchBar.sizeToFit() // Фикс для UINavigationBar
         navigationItem.titleView = searchBar
         
         let layout = UICollectionViewFlowLayout()
@@ -31,8 +34,8 @@ class PhotoGalleryViewController: UIViewController {
         collectionView.translatesAutoresizingMaskIntoConstraints = false
         collectionView.backgroundColor = .white
         collectionView.register(PhotoCell.self, forCellWithReuseIdentifier: "cell")
-        collectionView.delegate = self // Назначаем делегат UICollectionView
-        collectionView.dataSource = self // Назначаем источник данных UICollectionView
+        collectionView.delegate = self
+        collectionView.dataSource = self
         view.addSubview(collectionView)
         
         resetButton.setTitle("Reset", for: .normal)
@@ -47,57 +50,71 @@ class PhotoGalleryViewController: UIViewController {
         ])
     }
     
-    // Функция для сброса поиска
-    @objc private func resetSearch() {
-        searchBar.text = ""
-        photos.removeAll()
-        collectionView.reloadData()
-        fetchPhotos(query: "Дом") // Или другое значение по умолчанию
-    }
-    
-    // Загрузка фотографий по запросу
-    func fetchPhotos(query: String) {
-        guard !query.isEmpty else {
-            // Пустой запрос, можно показать ошибку или вернуть дефолтные данные
-            print("Пустой запрос!")
+    func fetchPhotos(query: String, page: Int) {
+        guard !isFetchingData else {
+            print("Запрос уже выполняется, подождите...")
             return
         }
-        PixabayAPI.fetchPhotos(query: query) { [weak self] result in
+
+        isFetchingData = true
+        
+        // Передаем запрос и текущую страницу
+        PixabayAPI.fetchPhotos(query: query, page: page) { [weak self] result in
+            guard let self = self else { return }
+
+            DispatchQueue.main.async {
+                self.isFetchingData = false
+            }
+            
             switch result {
             case .success(let fetchedPhotos):
-                if !fetchedPhotos.isEmpty {
-                    self?.photos = fetchedPhotos
-                    DispatchQueue.main.async {
-                        self?.collectionView.reloadData()
-                    }
-                } else {
-                    DispatchQueue.main.async {
-                        // Здесь можно отобразить уведомление, что нет результатов
-                        let alert = UIAlertController(title: "Нет результатов", message: "По запросу '\(query)' не найдено фотографий.", preferredStyle: .alert)
-                        alert.addAction(UIAlertAction(title: "OK", style: .default))
-                        self?.present(alert, animated: true)
-                    }
+                DispatchQueue.main.async {
+                    self.photos.append(contentsOf: fetchedPhotos) // Добавляем новые фото
+                    self.collectionView.reloadData()
+                    self.currentPage += 1 // Увеличиваем страницу для следующего запроса
                 }
             case .failure(let error):
                 DispatchQueue.main.async {
-                    print("Ошибка загрузки фотографий: \(error.localizedDescription)")
-                    // Можно также уведомить пользователя о возникшей ошибке
-                    let alert = UIAlertController(title: "Ошибка", message: "Не удалось загрузить фотографии. Попробуйте еще раз.", preferredStyle: .alert)
-                    alert.addAction(UIAlertAction(title: "OK", style: .default))
-                    self?.present(alert, animated: true)
+                    print("Ошибка загрузки: \(error.localizedDescription)")
+                    self.showAlert(title: "Ошибка", message: "Не удалось загрузить фотографии. Попробуйте еще раз.")
                 }
             }
         }
     }
+
     
-    // Переход на экран с полноэкранной фотографией
+    private func showAlert(title: String, message: String) {
+        let alert = UIAlertController(title: title, message: message, preferredStyle: .alert)
+        alert.addAction(UIAlertAction(title: "OK", style: .default))
+        present(alert, animated: true)
+    }
+    
     private func showFullScreenPhoto(with photo: Photo) {
         let fullScreenVC = FullScreenPhotoViewController(photoURL: photo.url)
         navigationController?.pushViewController(fullScreenVC, animated: true)
     }
+
+    @objc private func resetSearch() {
+        searchBar.text = ""  // Очищаем текстовое поле
+        photos.removeAll()   // Очищаем текущие фотографии
+        collectionView.reloadData() // Перезагружаем коллекцию
+        currentPage = 1  // Сбрасываем страницу
+        
+        // При пустом запросе загружаем все фотографии
+        fetchPhotos(query: "", page: currentPage)
+    }
+
+    func scrollViewDidScroll(_ scrollView: UIScrollView) {
+        let offsetY = scrollView.contentOffset.y
+        let contentHeight = scrollView.contentSize.height
+        let scrollViewHeight = scrollView.frame.size.height
+
+        if offsetY > contentHeight - scrollViewHeight * 2, !isFetchingData {
+            fetchPhotos(query: searchBar.text ?? "Дом", page: currentPage)
+        }
+    }
 }
 
-// MARK: - UICollectionViewDelegate, UICollectionViewDataSource
 extension PhotoGalleryViewController: UICollectionViewDelegate, UICollectionViewDataSource {
     func collectionView(_ collectionView: UICollectionView, numberOfItemsInSection section: Int) -> Int {
         return photos.count
@@ -110,17 +127,25 @@ extension PhotoGalleryViewController: UICollectionViewDelegate, UICollectionView
     }
     
     func collectionView(_ collectionView: UICollectionView, didSelectItemAt indexPath: IndexPath) {
-        // Переход с использованием кода
         let selectedPhoto = photos[indexPath.item]
         showFullScreenPhoto(with: selectedPhoto)
     }
 }
 
-// MARK: - UISearchBarDelegate
 extension PhotoGalleryViewController: UISearchBarDelegate {
     func searchBarSearchButtonClicked(_ searchBar: UISearchBar) {
         if let query = searchBar.text, !query.isEmpty {
-            fetchPhotos(query: query)
+            photos.removeAll() // Очищаем текущие фотографии
+            collectionView.reloadData() // Перезагружаем коллекцию
+            currentPage = 1 // Сбрасываем страницу
+            fetchPhotos(query: query, page: currentPage) // Загружаем фотографии по запросу
+        } else {
+            // Если текст пустой, загружаем все фотографии
+            photos.removeAll()
+            collectionView.reloadData()
+            currentPage = 1
+            fetchPhotos(query: "", page: currentPage) // Загружаем все фотографии
         }
     }
 }
+

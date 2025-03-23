@@ -2,26 +2,26 @@ import Alamofire
 import SwiftyJSON
 
 struct PixabayAPI {
-    static func fetchPhotos(query: String, completion: @escaping (Result<[Photo], Error>) -> Void) {
-        // Получаем API-ключ из Info.plist
+    static func fetchPhotos(query: String, page: Int, completion: @escaping (Result<[Photo], Error>) -> Void) {
+    
+        // Получаем API ключ из Info.plist
         guard let apiKey = Bundle.main.object(forInfoDictionaryKey: "PIXABAY_API_KEY") as? String else {
             completion(.failure(NSError(domain: "PixabayAPI", code: 0, userInfo: [NSLocalizedDescriptionKey: "API Key is missing in Info.plist"])))
             return
         }
 
-        // Кодируем строку запроса
+        // Кодируем поисковый запрос
         guard let encodedQuery = query.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed) else {
             completion(.failure(NSError(domain: "PixabayAPI", code: 1, userInfo: [NSLocalizedDescriptionKey: "Failed to encode query"])))
             return
         }
 
-        // Формируем URL для запроса
-        let urlString = "https://pixabay.com/api/?key=\(apiKey)&q=\(encodedQuery)&image_type=photo&per_page=20"
-
-        // Логируем URL для проверки
+        // Формируем URL с добавлением параметра page
+        let urlString = "https://pixabay.com/api/?key=\(apiKey)&q=\(encodedQuery)&image_type=photo&per_page=20&page=\(page)"
+        
         print("Request URL: \(urlString)")
 
-        // Выполняем запрос
+        // Отправляем запрос
         AF.request(urlString).responseJSON { response in
             switch response.result {
             case .success(let value):
